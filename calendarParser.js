@@ -202,7 +202,13 @@ const calendarTxtParser = {
   },
 
   createJstToday : function () {
-    return todayJst = this.createJst(Date.now());
+    return this.createJst(Date.now());
+  },
+ 
+  createJstTomorrow : function () {
+    let day = this.createJst(Date.now());
+	day.setDate(day.getDate() + 1);
+	return day;
   },
 
 };

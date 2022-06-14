@@ -3,12 +3,21 @@ const app = express();
 const calendarFile = "./calendar.txt";
 const parser = require("./calendarParser.js");
 
-app.get('/garbage', function(req, res){
+app.get('/garbage/today', function(req, res){
    parser.parseFile(calendarFile).then(() => {
       res.send({
          success : true,
          status : 200,
          data : parser.getInfoAsHumanReadable(parser.createJstToday()),
+      });
+   });
+});
+app.get('/garbage/tomorrow', function(req, res){
+   parser.parseFile(calendarFile).then(() => {
+      res.send({
+         success : true,
+         status : 200,
+         data : parser.getInfoAsHumanReadable(parser.createJstTomorrow()),
       });
    });
 });

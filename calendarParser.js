@@ -69,7 +69,16 @@ const calendarTxtParser = {
 
   getInfoAsHumanReadable : function(date) {
 
-    let info = '今日は%s曜日。%sの日です。ゴミを出すのを忘れずに。';
+    let dateComment = '';
+
+    if (this.isToday(date)) {
+      dateComment = '今日';
+    } else if (this.isTomorrow(date)) {
+      dateComment = '明日';
+    } else {
+      dateComment = this.formatDate(date);
+    }
+    let info = dateComment + 'は%s曜日。%sの日です。ゴミを出すのを忘れずに。';
     let cate = '';
     let dayofweek = this.dayOfWeekJpn[date.getDay()];
     let dateStr = this.formatDate(date);
@@ -167,6 +176,13 @@ const calendarTxtParser = {
     return date_.getDate() == today.getDate() &&
       date_.getMonth() == today.getMonth() &&
       date_.getFullYear() == today.getFullYear()
+  },
+
+  isTomorrow : function (date_) {
+    const tomorrow = this.createJstTomorrow();
+    return date_.getDate() == tomorrow.getDate() &&
+      date_.getMonth() == tomorrow.getMonth() &&
+      date_.getFullYear() == tomorrow.getFullYear()
   },
 
   isMonday : function (dateObj) {

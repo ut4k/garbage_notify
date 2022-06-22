@@ -2,13 +2,14 @@ const express = require('express');
 const app = express();
 const calendarFile = "./calendar.txt";
 const parser = require("./calendarParser.js");
+const dayjs = require('dayjs');
 
 app.get('/garbage/today', function(req, res){
    parser.parseFile(calendarFile).then(() => {
       res.send({
          success : true,
          status : 200,
-         data : parser.getInfoAsHumanReadable(parser.createJstToday()),
+         data : parser.getInfoAsHumanReadable(dayjs()),
       });
    });
 });
@@ -17,17 +18,16 @@ app.get('/garbage/tomorrow', function(req, res){
       res.send({
          success : true,
          status : 200,
-         data : parser.getInfoAsHumanReadable(parser.createJstTomorrow()),
+         data : parser.getInfoAsHumanReadable(dayjs().add(1, 'day')),
       });
    });
 });
-// app.param('day', /^(\d{4})(\d{2})(\d{2})$/);
 app.get(/^\/garbage\/(\d{4})(\d{2})(\d{2})$/, function(req, res){
    parser.parseFile(calendarFile).then(() => {
       res.send({
          success : true,
          status : 200,
-         data : parser.getInfoAsHumanReadable(parser.createJst(req.params[0] + '/' + req.params[1] + '/' + req.params[2])),
+         data : parser.getInfoAsHumanReadable(dayjs([req.params[0], req.params[1], req.params[2]])),
          debug : req.params,
          dateString : req.params[0] + '/' + req.params[1] + '/' + req.params[2],
       });

@@ -1,18 +1,22 @@
 const fs = require("fs");
 const readline = require("readline");
-const {format} = require('util')
+const {format} = require('util');
+const dayjs = require('dayjs');
+const isToday = require('dayjs/plugin/isToday');
+const isTomorrow = require('dayjs/plugin/isTomorrow');
+dayjs.extend(isToday);
+dayjs.extend(isTomorrow);
 
 const calendarTxtParser = {
 
   file : undefined,
-  // calendarData : [],
   calendarData : {},
-  currentYear : undefined,
-  currentMonth : undefined,
-  currentCategory : undefined,
+
+  monthPointer : undefined,
+  yearPointer : undefined,
+  categoryPointer : undefined,
 
   dayOfWeekJpn : ["日", "月", "火", "水", "木", "金", "土"],
-
   categoryNames : {
      burnable : '燃えるごみ'
     ,plastic : 'プラ容器'
@@ -27,7 +31,6 @@ const calendarTxtParser = {
       input: fileStream,
     });
     for await (const line of rl) {
-      let currentMonth = undefined;
       let passedYearHeading = false;
       let passedMonthHeading = false;
 
@@ -46,48 +49,45 @@ const calendarTxtParser = {
         this.isRecyclable(line) || //資源
         this.isPaper(line) //紙・衣類
       ) {
-        const days = this.getDays(line);
-        const monthNum = this.getCurrentMonth();
-        const yearNum = this.getCurrentYear(monthNum);
-        const category = this.getCurrentCategory();
+        const days     = this.getDays(line);
+        const monthNum = this.monthPointer;
+        const yearNum  = this.yearPointer;
+        const category = this.categoryPointer;
 
         for (var i = 0; i < days.length; i++) {
-          let dateYmd = yearNum + "/" + monthNum + "/" + days[i];
-          let dateObj = new Date(yearNum, (monthNum-1), days[i]);
-          dateObj.setHours(dateObj.getHours() + 9); //to JST
+          let dateYmd = dayjs([yearNum, monthNum, days[i]]).format('YYYYMMDD');
+          let dateObj = dayjs([yearNum, (monthNum-1), days[i]]);
 
           this.calendarData[dateYmd] = {
             date: dateYmd,
             dateObj : dateObj,
             category : category,
           };
+
         }
       }
     }
-    // console.log(this.calendarData);
   },
 
-  getInfoAsHumanReadable : function(date) {
-
+  getInfoAsHumanReadable : function(d) {
     let dateComment = '';
-
-    if (this.isToday(date)) {
+    if (d.isToday()) {
       dateComment = '今日';
-    } else if (this.isTomorrow(date)) {
+    } else if (d.isTomorrow()) {
       dateComment = '明日';
     } else {
-      dateComment = this.formatDate(date);
+      dateComment = d.format('YYYY年MM月DD日');
     }
     let info = dateComment + 'は%s曜日。%sの日です。ゴミを出すのを忘れずに。';
     let cate = '';
-    let dayofweek = this.dayOfWeekJpn[date.getDay()];
-    let dateStr = this.formatDate(date);
+    let dayofweek = this.dayOfWeekJpn[d.day()];
+    let dateKey = d.format('YYYYMMDD');
 
-    if (this.isBurnableDay(date)) {
+    if (this.isBurnableDay(d)) {
       cate = 'burnable';
 
-    } else if (dateStr in this.calendarData) {
-      cate = this.calendarData[dateStr].category;
+    } else if (dateKey in this.calendarData) {
+      cate = this.calendarData[dateKey].category;
 
     } else {
       return '今日はゴミの日ではありません。';
@@ -104,7 +104,7 @@ const calendarTxtParser = {
   isTitle : function(str) {
     let match = str.match(/.{2}(\d+)年度.*ごみ収集カレンダー/);
     if (match) {
-      this.currentYear = this.reiwaToYear(match[1]);
+      this.yearPointer = this.reiwaToYear(match[1]);
       return true;
     }
     return false;
@@ -113,49 +113,33 @@ const calendarTxtParser = {
   isMonthHeading : function(str) {
     let match = str.match(/^(\d+)月/);
     if (match) {
-      this.currentMonth = match[1];
+      this.monthPointer = match[1];
     }
     return match;
   },
 
-  getCurrentYear : function(month) {
-    // if (month >= 10) {
-    //   return this.currentYear;
-    // }
-    // return this.currentYear + 1;
-    return this.currentYear;
-  },
-
-  getCurrentMonth : function() {
-    return this.currentMonth;
-  },
-
-  getCurrentCategory : function() {
-    return this.currentCategory;
-  },
-
   isBurnable : function(str) {
-    this.currentCategory = 'burnable';
+    this.categoryPointer = 'burnable';
     return str.indexOf("可燃ごみ") != -1;
   },
 
   isPlastice: function(str) {
-    this.currentCategory = 'plastic';
+    this.categoryPointer = 'plastic';
     return str.indexOf("プラ") != -1;
   },
 
   isNonBurnable : function(str) {
-    this.currentCategory = 'nonburnable';
+    this.categoryPointer = 'nonburnable';
     return str.indexOf("不燃") != -1;
   },
 
   isRecyclable : function(str) {
-    this.currentCategory = 'recyclable';
+    this.categoryPointer = 'recyclable';
     return str.indexOf("資源") != -1;
   },
 
   isPaper : function(str) {
-    this.currentCategory = 'paper';
+    this.categoryPointer = 'paper';
     return str.indexOf("紙・衣類") != -1;
   },
 
@@ -171,60 +155,21 @@ const calendarTxtParser = {
     return this.categoryNames[category_];
   },
 
-  isToday : function (date_) {
-    const today = this.createJstToday();
-    return date_.getDate() == today.getDate() &&
-      date_.getMonth() == today.getMonth() &&
-      date_.getFullYear() == today.getFullYear()
+  isMonday : function (d) {
+    return d.day() == 1;
   },
 
-  isTomorrow : function (date_) {
-    const tomorrow = this.createJstTomorrow();
-    return date_.getDate() == tomorrow.getDate() &&
-      date_.getMonth() == tomorrow.getMonth() &&
-      date_.getFullYear() == tomorrow.getFullYear()
+  isTuesDay : function (d) {
+    return d.day() == 2;
   },
 
-  isMonday : function (dateObj) {
-    return dateObj.getDay() == 1;
-  },
-
-  isTuesDay : function (dateObj) {
-    return dateObj.getDay() == 2;
-  },
-
-  isThursday : function (dateObj) {
-    return dateObj.getDay() == 4;
+  isThursday : function (d) {
+    return d.day() == 4;
   },
 
   //燃えるゴミの日
-  isBurnableDay : function (dateObj) {
-    return this.isMonday(dateObj) || this.isThursday(dateObj);
-  },
-
-  formatDate : function (dateObj) {
-    const y = dateObj.getFullYear();
-    const m = dateObj.getMonth()+1;
-    const d = dateObj.getDate();
-    // const m = ('00' + (dateObj.getMonth()+1)).slice(-2);
-    // const d = ('00' + dateObj.getDate()).slice(-2);
-    return (y + '/' + m + '/' + d);
-  },
-
-  createJst : function (dateYmd) {
-    const dt = new Date(dateYmd);
-    dt.setHours(dt.getHours() + 9); //to JST
-    return dt;
-  },
-
-  createJstToday : function () {
-    return this.createJst(Date.now());
-  },
- 
-  createJstTomorrow : function () {
-    let day = this.createJst(Date.now());
-	day.setDate(day.getDate() + 1);
-	return day;
+  isBurnableDay : function (d) {
+    return this.isMonday(d) || this.isThursday(d);
   },
 
 };

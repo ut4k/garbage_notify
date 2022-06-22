@@ -8,6 +8,6 @@ https://www.city.maebashi.gunma.jp/soshiki/kankyo/gomiseisaku/gyomu/2_2/1/16920.
 
 ## api
 
-`GET /garbage/today` - 今日のゴミ出し情報
-`GET /garbage/tomorrow` - 明日のゴミ出し情報
-`GET /garbage/[YYYYMMDD]` - YYYY年MM月DD日のゴミ出し情報
+`GET /garbage/today` - 今日のゴミ出し情報  
+`GET /garbage/tomorrow` - 明日のゴミ出し情報  
+`GET /garbage/[YYYYMMDD]` - YYYY年MM月DD日のゴミ出し情報  
